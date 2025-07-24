@@ -139,8 +139,8 @@
             align-items: center;
         }
         #game2-elements { /* Catching Game */
-            width: 300px; /* Fixed width for catching game container */
-            height: 200px; /* Fixed height for catching game container */
+            width: 380px; /* Increased width for catching game container */
+            height: 220px; /* Increased height for catching game container */
             background-color: lightblue;
             margin: 20px auto;
             position: relative;
@@ -155,7 +155,7 @@
             background-color: red;
             position: absolute;
             bottom: 0;
-            left: 125px; /* Centered for 300px width */
+            left: 165px; /* Centered for 380px width: (380 - 50) / 2 = 165 */
             border-radius: 4px;
         }
         .game2-falling-object {
@@ -411,8 +411,8 @@
         var hillClimbGameLoopInterval;
 
         function hillClimbSetupCanvasDimensions() {
-            canvas.width = 300;
-            canvas.height = 200;
+            canvas.width = 380; /* Increased width */
+            canvas.height = 220; /* Increased height */
             offscreenCanvas.width = Math.floor(canvas.width / PIXEL_SCALE_FACTOR);
             offscreenCanvas.height = Math.floor(canvas.height / PIXEL_SCALE_FACTOR);
             if (groundImage.complete && groundImage.naturalWidth !== 0) {
@@ -794,7 +794,7 @@
 
             game2Score = 0;
             game2ScoreDisplay.textContent = "Score: " + game2Score;
-            game2PlayerX = 125;
+            game2PlayerX = 165; // Updated initial position for larger container
             game2Player.style.left = game2PlayerX + 'px';
 
             // Clear any old falling objects
