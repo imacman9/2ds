@@ -191,6 +191,11 @@
 </head>
 <body>
 
+    <!-- Audio element for background music -->
+    <!-- IMPORTANT: HTML5 audio support on older 3DS browsers is extremely limited or non-existent. -->
+    <!-- This audio may not play on your device. -->
+    <audio id="backgroundMusic" src="song.mp3" autoplay loop></audio>
+
     <div id="main-content-wrapper">
         <h1 id="game-title">Game Collection</h1>
 
@@ -245,6 +250,7 @@
         var playCatchingGameBtn = document.getElementById('playCatchingGameBtn');
         var messageBox = document.getElementById('message-box');
         var messageText = document.getElementById('message-text');
+        var backgroundMusic = document.getElementById('backgroundMusic'); // Get the audio element
 
         // Function to show a custom message box instead of alert()
         function showMessageBox(message) {
@@ -288,6 +294,14 @@
             stopAllGames();
             gameTitle.textContent = "Game Collection";
             gameMenu.style.display = 'flex';
+            // Attempt to play music when menu is shown
+            if (backgroundMusic) {
+                backgroundMusic.play().catch(function(error) {
+                    console.warn("Autoplay of background music failed:", error);
+                    // Autoplay might be blocked. User interaction might be needed.
+                    // On 3DS, this is very likely to fail.
+                });
+            }
         }
 
         // --- Hill Climb Game (Game 1) Variables and Logic ---
