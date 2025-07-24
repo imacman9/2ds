@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3DS Game Collection</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        h1 {
+            margin-bottom: 10px;
+            font-weight: normal;
+            font-size: 1.5em;
+        }
+        canvas {
+            border: 2px solid white;
+            border-radius: 5px;
+            display: block;
+        }
+        .controls-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .game-overlay {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 20;
+        }
+        .game-overlay label, .game-overlay input, .game-overlay button {
+            display: block;
+            margin: 8px auto;
+            color: white;
+            font-family: inherit;
+        }
+        .game-overlay input[type="text"] {
+            width: 180px;
+            padding: 6px;
+            border: 1px solid #555;
+            background-color: #333;
+            color: white;
+            border-radius: 4px;
+        }
+        .game-overlay button {
+            background-color: #3498db;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-bottom: 10px; /* Added margin for menu buttons */
+        }
+        .game-overlay button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Touch controls container */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 15px;
+            width: 90%;
+            max-width: 300px;
+            justify-content: space-around;
+            z-index: 10;
+        }
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border: 1px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8em;
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        @media (pointer: coarse) {
+            .touch-controls {
+                display: flex;
+            }
+            .controls-info {
+                display: none;
+            }
+        }
+
+        /* Custom message box styling */
+        #message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            border: 2px solid #333;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            color: black;
+        }
+        #message-box button {
+            margin-top: 15px;
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Game-specific containers */
+        .game-container {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+        }
+        #game1-elements { /* Hill Climb Game */
+            display: flex; /* Initially hidden, but uses flex for internal layout */
+            flex-direction: column;
+            align-items: center;
+        }
+        #game2-elements { /* Catching Game */
+            width: 300px; /* Fixed width for catching game container */
+            height: 200px; /* Fixed height for catching game container */
+            background-color: lightblue;
+            margin: 20px auto;
+            position: relative;
+            border: 2px solid black;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        #game2-player {
+            width: 50px;
+            height: 20px;
+            background-color: red;
+            position: absolute;
+            bottom: 0;
+            left: 125px; /* Centered for 300px width */
+            border-radius: 4px;
+        }
+        .game2-falling-object {
+            width: 20px;
+            height: 20px;
+            background-color: green;
+            position: absolute;
+            border-radius: 50%;
+        }
+        #game2-score {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px; /* Adjusted margin */
+            color: #333;
+        }
+        #game-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        #game-menu button {
+            width: 180px;
+            padding: 12px;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-content-wrapper">
+        <h1 id="game-title">Game Collection</h1>
+
+        <div id="game-menu" class="game-overlay">
+            <h2>Choose a Game</h2>
+            <button id="playHillClimbBtn">Pixelated Hill Climb</button>
+            <button id="playCatchingGameBtn">Simple Catching Game</button>
+        </div>
+
+        <!-- Hill Climb Game Elements -->
+        <div id="hill-climb-game" class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <p class="controls-info">Controls: D-Pad Up/Down to Accelerate/Brake</p>
+
+            <div id="nameEntryOverlay" class="game-overlay">
+                <h2>Enter Your Name</h2>
+                <input type="text" id="playerNameInput" placeholder="Your Name">
+                <button id="startGameButton">Start Hill Climb</button>
+            </div>
+
+            <div class="touch-controls">
+                <div id="brakeBtn" class="touch-btn">▼</div>
+                <div id="gasBtn" class="touch-btn">▲</div>
+            </div>
+        </div>
+
+        <!-- Simple Catching Game Elements -->
+        <div id="catching-game" class="game-container">
+            <div id="game2-elements">
+                <div id="game2-player"></div>
+            </div>
+            <div id="game2-score">Score: 0</div>
+        </div>
+    </div>
+
+    <div id="message-box">
+        <p id="message-text"></p>
+        <button onclick="hideMessageBox()">OK</button>
+    </div>
+
+    <script>
+        // --- Global Game State Management ---
+        var currentActiveGame = null; // 'hill_climb' or 'catching_game'
+        var hillClimbGameRunning = false;
+        var catchingGameRunning = false;
+
+        // --- Common UI Elements ---
+        var mainContentWrapper = document.getElementById('main-content-wrapper');
+        var gameTitle = document.getElementById('game-title');
+        var gameMenu = document.getElementById('game-menu');
+        var playHillClimbBtn = document.getElementById('playHillClimbBtn');
+        var playCatchingGameBtn = document.getElementById('playCatchingGameBtn');
+        var messageBox = document.getElementById('message-box');
+        var messageText = document.getElementById('message-text');
+
+        // Function to show a custom message box instead of alert()
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.style.display = 'block';
+        }
+
+        // Function to hide the custom message box
+        function hideMessageBox() {
+            messageBox.style.display = 'none';
+        }
+
+        // --- Game Switching Logic ---
+        function stopAllGames() {
+            // Stop Hill Climb Game
+            if (hillClimbGameRunning) {
+                hillClimbGameRunning = false;
+                if (hillClimbGameLoopInterval) clearTimeout(hillClimbGameLoopInterval);
+                // Hide hill climb elements
+                document.getElementById('hill-climb-game').style.display = 'none';
+                document.getElementById('nameEntryOverlay').style.display = 'none'; // Ensure overlay is hidden
+            }
+
+            // Stop Catching Game
+            if (catchingGameRunning) {
+                catchingGameRunning = false;
+                if (catchingGameLoopInterval) clearTimeout(catchingGameLoopInterval);
+                if (createFallingObjectInterval) clearInterval(createFallingObjectInterval);
+                // Hide catching game elements
+                document.getElementById('catching-game').style.display = 'none';
+                // Clear falling objects from previous game
+                while (game2Container.firstChild) {
+                    game2Container.removeChild(game2Container.firstChild);
+                }
+                game2FallingObjects.length = 0; // Clear array
+            }
+            currentActiveGame = null;
+        }
+
+        function showGameMenu() {
+            stopAllGames();
+            gameTitle.textContent = "Game Collection";
+            gameMenu.style.display = 'flex';
+        }
+
+        // --- Hill Climb Game (Game 1) Variables and Logic ---
+        var canvas = document.getElementById('gameCanvas');
+        var ctx = canvas.getContext('2d');
+        var offscreenCanvas = document.createElement('canvas');
+        var PIXEL_SCALE_FACTOR = 2.0;
+        var offscreenCtx = offscreenCanvas.getContext('2d');
+
+        offscreenCtx.imageSmoothingEnabled = false;
+        offscreenCtx.mozImageSmoothingEnabled = false;
+        offscreenCtx.webkitImageSmoothingEnabled = false;
+        offscreenCtx.msImageSmoothingEnabled = false;
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
+
+        var hillClimbGameState = {
+            playerName: '',
+            score: 0,
+            coinScore: 0,
+            gameOver: false,
+            gameOverMessage: "Flipped Over!",
+            originalGravity: 0.55,
+            currentGravity: 0.55,
+            originalFriction: 0.02,
+            currentFriction: 0.02,
+        };
+
+        var hillClimbNameEntryOverlay = document.getElementById('nameEntryOverlay');
+        var hillClimbPlayerNameInput = document.getElementById('playerNameInput');
+        var hillClimbStartGameButton = document.getElementById('startGameButton');
+
+        // --- Image Loading ---
+        // IMPORTANT: These image files (car.png, ground.png, sky.png, coin.png)
+        // MUST be placed in the SAME directory as this HTML file on your SD card.
+        // As a fallback, placeholder images are used if local files are not found.
+        var carImage = new Image();
+        carImage.src = 'car.png'; // Try loading local file first
+        carImage.onerror = function() {
+            console.error("Failed to load car image. Using placeholder.");
+            carImage.src = 'https://placehold.co/100x55/FF0000/FFFFFF?text=CAR'; // Fallback to placeholder
+            hillClimbImageLoadHandler(); // Still call handler to count as loaded
+        };
+
+        var groundImage = new Image();
+        groundImage.src = 'ground.png'; // Try loading local file first
+        groundImage.onerror = function() {
+            console.error("Failed to load ground image. Using placeholder.");
+            groundImage.src = 'https://placehold.co/50x50/32CD32/FFFFFF?text=GRASS'; // Fallback to placeholder
+            hillClimbImageLoadHandler(); // Still call handler to count as loaded
+        };
+
+        var skyImage = new Image();
+        skyImage.src = 'sky.png'; // Try loading local file first
+        skyImage.onerror = function() {
+            console.error("Failed to load sky image. Using placeholder.");
+            skyImage.src = 'https://placehold.co/300x200/87CEEB/FFFFFF?text=SKY'; // Fallback to placeholder
+            hillClimbImageLoadHandler(); // Still call handler to count as loaded
+        };
+
+        var coinImage = new Image();
+        coinImage.src = 'coin.png'; // Try loading local file first
+        coinImage.onerror = function() {
+            console.error("Failed to load coin image. Using placeholder.");
+            coinImage.src = 'https://placehold.co/30x30/FFD700/000000?text=C'; // Fallback to placeholder
+            hillClimbImageLoadHandler(); // Still call handler to count as loaded
+        };
+
+
+        var hillClimbImagesToLoad = 4;
+        var hillClimbImagesLoadedCount = 0;
+        var hillClimbGroundImagePattern = null;
+
+        function hillClimbImageLoadHandler() {
+            hillClimbImagesLoadedCount++;
+            if (hillClimbImagesLoadedCount === hillClimbImagesToLoad) {
+                // All images loaded, now game can potentially start
+                // (Still waits for name entry)
+                // console.log("Hill Climb images loaded."); // Removed console log
+                if (groundImage.complete && groundImage.naturalWidth !== 0) {
+                    hillClimbGroundImagePattern = offscreenCtx.createPattern(groundImage, 'repeat');
+                }
+            }
+        }
+
+        carImage.onload = hillClimbImageLoadHandler;
+        groundImage.onload = hillClimbImageLoadHandler;
+        skyImage.onload = hillClimbImageLoadHandler;
+        coinImage.onload = hillClimbImageLoadHandler;
+
+
+        var car = {
+            x: 0, y: 0, width: 0, height: 0, speed: 0, velocityY: 0, acceleration: 0, maxSpeed: 0, friction: 0,
+            angle: 0, angularSpeed: 0, onGround: false
+        };
+        var camera = { x: 0, y: 0, lerpFactor: 0.04 };
+        var hillClimbKeys = { ArrowUp: false, ArrowDown: false };
+        var terrainPoints = [];
+        var terrainSegmentLength = 0;
+        var initialTerrainSegments = 0;
+        var coins = [];
+        var coinSize = 0;
+        var coinSpawnHeight = 0;
+        var coinSpacing = 10;
+        var hillClimbGameLoopInterval;
+
+        function hillClimbSetupCanvasDimensions() {
+            canvas.width = 300;
+            canvas.height = 200;
+            offscreenCanvas.width = Math.floor(canvas.width / PIXEL_SCALE_FACTOR);
+            offscreenCanvas.height = Math.floor(canvas.height / PIXEL_SCALE_FACTOR);
+            if (groundImage.complete && groundImage.naturalWidth !== 0) {
+                hillClimbGroundImagePattern = offscreenCtx.createPattern(groundImage, 'repeat');
+            }
+        }
+
+        function hillClimbSetupGameParameters() {
+            car.width = 100 / PIXEL_SCALE_FACTOR;
+            car.height = 55 / PIXEL_SCALE_FACTOR;
+            car.acceleration = 0.2 / PIXEL_SCALE_FACTOR;
+            car.maxSpeed = 7 / PIXEL_SCALE_FACTOR;
+            car.friction = hillClimbGameState.currentFriction;
+            terrainSegmentLength = 40 / PIXEL_SCALE_FACTOR;
+            initialTerrainSegments = Math.ceil(offscreenCanvas.width / terrainSegmentLength) + 10;
+            coinSize = 30 / PIXEL_SCALE_FACTOR;
+            coinSpawnHeight = 50 / PIXEL_SCALE_FACTOR;
+        }
+
+        function hillClimbGenerateInitialTerrain() {
+            terrainPoints.length = 0;
+            coins.length = 0;
+            var y = offscreenCanvas.height * 0.7;
+            var slope = 0;
+            for (var i = 0; i < initialTerrainSegments; i++) {
+                terrainPoints.push({ x: i * terrainSegmentLength, y: y });
+                if (Math.random() > 0.6) { slope += (Math.random() - 0.5) * (4 / PIXEL_SCALE_FACTOR); }
+                if (slope > (10 / PIXEL_SCALE_FACTOR)) slope = (10 / PIXEL_SCALE_FACTOR);
+                if (slope < (-10 / PIXEL_SCALE_FACTOR)) slope = (-10 / PIXEL_SCALE_FACTOR);
+                y += slope;
+                if (y > offscreenCanvas.height - (50 / PIXEL_SCALE_FACTOR)) y = offscreenCanvas.height - (50 / PIXEL_SCALE_FACTOR);
+                if (y < offscreenCanvas.height * 0.2) y = offscreenCanvas.height * 0.2;
+                if (i % coinSpacing === 0 && i > 0) {
+                    coins.push({ x: i * terrainSegmentLength, y: y - coinSpawnHeight, width: coinSize, height: coinSize, collected: false });
+                }
+            }
+        }
+
+        function hillClimbExtendTerrain() {
+            var lastPoint = terrainPoints[terrainPoints.length - 1];
+            if (car.x > lastPoint.x - offscreenCanvas.width * 0.8) {
+                var y = lastPoint.y;
+                var slope = (y - terrainPoints[terrainPoints.length - 2].y) / terrainSegmentLength;
+                var startIndex = terrainPoints.length;
+                for (var i = 0; i < 50; i++) {
+                    var newX = lastPoint.x + (i + 1) * terrainSegmentLength;
+                     if (Math.random() > 0.6) { slope += (Math.random() - 0.5) * (4 / PIXEL_SCALE_FACTOR); }
+                    if (slope > (10 / PIXEL_SCALE_FACTOR)) slope = (10 / PIXEL_SCALE_FACTOR);
+                    if (slope < (-10 / PIXEL_SCALE_FACTOR)) slope = (-10 / PIXEL_SCALE_FACTOR);
+                    y += slope;
+                    if (y > offscreenCanvas.height - (50 / PIXEL_SCALE_FACTOR)) y = offscreenCanvas.height - (50 / PIXEL_SCALE_FACTOR);
+                    if (y < offscreenCanvas.height * 0.2) y = offscreenCanvas.height * 0.2;
+                    terrainPoints.push({ x: newX, y: y });
+                    if ((startIndex + i) % coinSpacing === 0) {
+                        coins.push({ x: newX, y: y - coinSpawnHeight, width: coinSize, height: coinSize, collected: false });
+                    }
+                }
+            }
+        }
+
+        function hillClimbDrawTerrain() {
+            offscreenCtx.beginPath();
+            offscreenCtx.moveTo(terrainPoints[0].x, terrainPoints[0].y);
+            for (var i = 1; i < terrainPoints.length; i++) { offscreenCtx.lineTo(terrainPoints[i].x, terrainPoints[i].y); }
+            offscreenCtx.lineTo(terrainPoints[terrainPoints.length - 1].x, offscreenCanvas.height + (200 / PIXEL_SCALE_FACTOR));
+            offscreenCtx.lineTo(terrainPoints[0].x, offscreenCanvas.height + (200 / PIXEL_SCALE_FACTOR));
+            offscreenCtx.closePath();
+            if (groundImage.complete && groundImage.naturalWidth !== 0 && hillClimbGroundImagePattern) {
+                offscreenCtx.fillStyle = hillClimbGroundImagePattern;
+            } else { offscreenCtx.fillStyle = '#2c3e50'; }
+            offscreenCtx.fill();
+            offscreenCtx.beginPath();
+            offscreenCtx.moveTo(terrainPoints[0].x, terrainPoints[0].y);
+            for (var j = 1; j < terrainPoints.length; j++) { offscreenCtx.lineTo(terrainPoints[j].x, terrainPoints[j].y); }
+            offscreenCtx.strokeStyle = '#3498db';
+            offscreenCtx.lineWidth = 10 / PIXEL_SCALE_FACTOR;
+            offscreenCtx.stroke();
+        }
+
+        function hillClimbDrawCar() {
+            offscreenCtx.save();
+            offscreenCtx.translate(car.x, car.y);
+            offscreenCtx.rotate(car.angle);
+            if (carImage.complete && carImage.naturalWidth !== 0) {
+                offscreenCtx.drawImage(carImage, -car.width / 2, -car.height, car.width, car.height);
+            } else {
+                offscreenCtx.fillStyle = '#e74c3c';
+                offscreenCtx.fillRect(-car.width / 2, -car.height, car.width, car.height);
+                offscreenCtx.fillStyle = '#333';
+                offscreenCtx.beginPath();
+                offscreenCtx.arc(-car.width / 4, -5 / PIXEL_SCALE_FACTOR, 8 / PIXEL_SCALE_FACTOR, 0, Math.PI * 2);
+                offscreenCtx.arc(car.width / 4, -5 / PIXEL_SCALE_FACTOR, 8 / PIXEL_SCALE_FACTOR, 0, Math.PI * 2);
+                offscreenCtx.fill();
+            }
+            offscreenCtx.restore();
+        }
+
+        function hillClimbDrawCoins() {
+            coins.forEach(function(coin) {
+                if (!coin.collected) {
+                    if (coinImage.complete && coinImage.naturalWidth !== 0) {
+                        offscreenCtx.drawImage(coinImage, coin.x - coin.width / 2, coin.y - coin.height / 2, coin.width, coin.height);
+                    } else {
+                        offscreenCtx.fillStyle = '#FFD700';
+                        offscreenCtx.beginPath();
+                        offscreenCtx.arc(coin.x, coin.y, coin.width / 2, 0, Math.PI * 2);
+                        offscreenCtx.fill();
+                        offscreenCtx.strokeStyle = '#DAA520';
+                        offscreenCtx.lineWidth = 1 / PIXEL_SCALE_FACTOR;
+                        offscreenCtx.stroke();
+                    }
+                }
+            });
+        }
+
+        function hillClimbDrawUI() {
+            ctx.fillStyle = 'white';
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText("Coins: " + hillClimbGameState.coinScore, 10, 20);
+            ctx.fillText("Player: " + hillClimbGameState.playerName, 10, 40);
+            if (hillClimbGameState.gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '30px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(hillClimbGameState.gameOverMessage, canvas.width / 2, canvas.height / 2 - 10);
+                ctx.font = '15px sans-serif';
+                ctx.fillText('Restarting...', canvas.width / 2, canvas.height / 2 + 20);
+            }
+        }
+
+        function hillClimbGetTerrainSegment(xPos) {
+            var index = Math.floor(xPos / terrainSegmentLength);
+            if (index >= 0 && index < terrainPoints.length - 1) {
+                return { p1: terrainPoints[index], p2: terrainPoints[index + 1] };
+            }
+            return null;
+        }
+
+        function hillClimbCheckCollision(carObj, coinObj) {
+            var carLeft = carObj.x - carObj.width / 2;
+            var carTop = carObj.y - carObj.height;
+            var carRight = carLeft + carObj.width;
+            var carBottom = carTop + carObj.height;
+            var coinLeft = coinObj.x - coinObj.width / 2;
+            var coinTop = coinObj.y - coinObj.height / 2;
+            var coinRight = coinLeft + coinObj.width;
+            var coinBottom = coinTop + coinObj.height;
+            return carLeft < coinRight && carRight > coinLeft && carTop < coinBottom && carBottom > coinTop;
+        }
+
+        function hillClimbUpdate() {
+            if (hillClimbGameState.gameOver) return;
+            if (hillClimbKeys.ArrowUp) car.speed += car.acceleration;
+            if (hillClimbKeys.ArrowDown) car.speed -= car.acceleration;
+            var terrainSegment = hillClimbGetTerrainSegment(car.x);
+            if (!terrainSegment) return;
+            var p1 = terrainSegment.p1;
+            var p2 = terrainSegment.p2;
+            var terrainAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            car.speed *= (1 - hillClimbGameState.currentFriction);
+            car.speed = Math.max(-car.maxSpeed / 2, Math.min(car.speed, car.maxSpeed));
+            car.x += car.speed * Math.cos(car.angle);
+            hillClimbGameState.score = Math.max(hillClimbGameState.score, car.x / 10);
+            var segmentProgress = (car.x - p1.x) / (p2.x - p1.x);
+            var groundHeight = p1.y + (p2.y - p1.y) * segmentProgress;
+            car.velocityY += hillClimbGameState.currentGravity / PIXEL_SCALE_FACTOR;
+            car.y += car.velocityY;
+            if (car.y >= groundHeight) {
+                car.y = groundHeight;
+                if (car.velocityY > (2 / PIXEL_SCALE_FACTOR)) { car.velocityY *= -0.3; } else { car.velocityY = 0; }
+                car.onGround = true;
+                var angleDifference = terrainAngle - car.angle;
+                car.angle += angleDifference * 0.1;
+                car.angularSpeed = 0;
+                car.speed -= Math.sin(terrainAngle) * (hillClimbGameState.currentGravity / PIXEL_SCALE_FACTOR) * 0.5;
+                var jumpThresholdAngle = Math.PI / 5;
+                var jumpSpeedThreshold = car.maxSpeed * 0.7;
+                if (terrainAngle > jumpThresholdAngle && car.speed > jumpSpeedThreshold && car.onGround) {
+                    car.velocityY = -Math.sin(terrainAngle) * car.speed * 0.28;
+                    car.y -= 2 / PIXEL_SCALE_FACTOR;
+                    car.onGround = false;
+                }
+            } else {
+                car.onGround = false;
+                if (hillClimbKeys.ArrowUp) car.angularSpeed -= 0.009;
+                if (hillClimbKeys.ArrowDown) car.angularSpeed += 0.009;
+                car.angularSpeed *= 0.95;
+                car.angle += car.angularSpeed;
+            }
+            for (var i = 0; i < coins.length; i++) {
+                var coin = coins[i];
+                if (!coin.collected) {
+                    if (hillClimbCheckCollision(car, coin)) {
+                        coin.collected = true;
+                        hillClimbGameState.coinScore++;
+                    }
+                }
+            }
+            if (Math.abs(car.angle) > Math.PI / 1.8) { hillClimbEndGame(); }
+            camera.x += (car.x - offscreenCanvas.width / 3 - camera.x) * camera.lerpFactor;
+            camera.y += (car.y - offscreenCanvas.height / 2 - camera.y) * camera.lerpFactor;
+            hillClimbExtendTerrain();
+        }
+
+        function hillClimbGameLoop() {
+            offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            if (skyImage.complete && skyImage.naturalWidth !== 0) {
+                offscreenCtx.drawImage(skyImage, 0, 0, offscreenCanvas.width, offscreenCanvas.height); /* Fixed height here */
+            } else { offscreenCtx.fillStyle = '#87CEEB'; offscreenCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height); }
+            hillClimbUpdate();
+            offscreenCtx.save();
+            offscreenCtx.translate(-camera.x, -camera.y);
+            hillClimbDrawTerrain();
+            hillClimbDrawCoins();
+            hillClimbDrawCar();
+            offscreenCtx.restore();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
+            hillClimbDrawUI();
+            if (hillClimbGameRunning) { hillClimbGameLoopInterval = setTimeout(hillClimbGameLoop, 50); }
+        }
+
+        function startHillClimbGame() {
+            stopAllGames();
+            gameMenu.style.display = 'none'; // Hide the game menu
+            currentActiveGame = 'hill_climb';
+            document.getElementById('hill-climb-game').style.display = 'flex';
+            gameTitle.textContent = "Pixelated Hill Climb";
+            // Show name entry overlay initially for Hill Climb
+            hillClimbNameEntryOverlay.style.display = 'block';
+            hillClimbPlayerNameInput.value = ''; // Clear previous name
+            hillClimbGameRunning = true; // Set to true to allow loop to start after name entry
+            // No direct call to resetGame or gameLoop here, it's handled by startGameButton click
+        }
+
+        function hillClimbResetGame() {
+            hillClimbGameState.score = 0;
+            hillClimbGameState.coinScore = 0;
+            hillClimbGameState.gameOver = false;
+            hillClimbSetupCanvasDimensions();
+            hillClimbSetupGameParameters();
+            car.x = 150 / PIXEL_SCALE_FACTOR;
+            car.y = offscreenCanvas.height * 0.7;
+            car.speed = 0; car.velocityY = 0; car.angle = 0; car.angularSpeed = 0; car.onGround = false;
+            camera.x = 0; camera.y = 0;
+            hillClimbGenerateInitialTerrain();
+            if (hillClimbGameLoopInterval) clearTimeout(hillClimbGameLoopInterval);
+        }
+
+        function hillClimbEndGame() {
+            if (hillClimbGameState.gameOver) return;
+            hillClimbGameState.gameOver = true;
+            setTimeout(hillClimbResetGame, 2000);
+        }
+
+        // Hill Climb Event Listeners
+        window.addEventListener('keydown', function(e) {
+            if (currentActiveGame === 'hill_climb') {
+                if (e.key === 'ArrowUp') hillClimbKeys.ArrowUp = true;
+                if (e.key === 'ArrowDown') hillClimbKeys.ArrowDown = true;
+            }
+        });
+        window.addEventListener('keyup', function(e) {
+            if (currentActiveGame === 'hill_climb') {
+                if (e.key === 'ArrowUp') hillClimbKeys.ArrowUp = false;
+                if (e.key === 'ArrowDown') hillClimbKeys.ArrowDown = false;
+            }
+        });
+
+        var hillClimbGasBtn = document.getElementById('gasBtn');
+        var hillClimbBrakeBtn = document.getElementById('brakeBtn');
+
+        function hillClimbHandleTouchStart(e, key) {
+            if (currentActiveGame === 'hill_climb') {
+                e.preventDefault();
+                hillClimbKeys[key] = true;
+            }
+        }
+        function hillClimbHandleTouchEnd(e, key) {
+            if (currentActiveGame === 'hill_climb') {
+                e.preventDefault();
+                hillClimbKeys[key] = false;
+            }
+        }
+        hillClimbGasBtn.addEventListener('touchstart', function(e) { hillClimbHandleTouchStart(e, 'ArrowUp'); }, false);
+        hillClimbGasBtn.addEventListener('touchend', function(e) { hillClimbHandleTouchEnd(e, 'ArrowUp'); }, false);
+        hillClimbBrakeBtn.addEventListener('touchstart', function(e) { hillClimbHandleTouchStart(e, 'ArrowDown'); }, false);
+        hillClimbBrakeBtn.addEventListener('touchend', function(e) { hillClimbHandleTouchEnd(e, 'ArrowDown'); }, false);
+
+        hillClimbStartGameButton.addEventListener('click', function() {
+            var name = hillClimbPlayerNameInput.value.trim();
+            if (name) {
+                hillClimbGameState.playerName = name;
+                hillClimbNameEntryOverlay.style.display = 'none'; // Hide overlay
+                hillClimbResetGame(); // Reset and start game
+                hillClimbGameLoop();
+            } else {
+                showMessageBox("Please enter your name!");
+            }
+        });
+
+
+        // --- Simple Catching Game (Game 2) Variables and Logic ---
+        var game2Container = document.getElementById('game2-elements');
+        var game2Player = document.getElementById('game2-player');
+        var game2ScoreDisplay = document.getElementById('game2-score');
+        var game2PlayerX = 125; // Initial position for 300px width container
+        var game2Score = 0;
+        var game2FallingObjects = [];
+        var createFallingObjectInterval;
+        var catchingGameLoopInterval;
+
+        function game2MovePlayer(event) {
+            var gameContainerWidth = game2Container.offsetWidth;
+            var playerWidth = game2Player.offsetWidth;
+            var playerSpeed = 10; // Speed without CSS transitions
+
+            if (event.key === 'ArrowLeft') {
+                game2PlayerX -= playerSpeed;
+            } else if (event.key === 'ArrowRight') {
+                game2PlayerX += playerSpeed;
+            }
+
+            // Clamp player position
+            if (game2PlayerX < 0) { game2PlayerX = 0; }
+            if (game2PlayerX > gameContainerWidth - playerWidth) { game2PlayerX = gameContainerWidth - playerWidth; }
+            game2Player.style.left = game2PlayerX + 'px';
+        }
+
+        function game2CreateFallingObject() {
+            var object = document.createElement('div');
+            object.classList.add('game2-falling-object');
+            object.style.left = Math.random() * (game2Container.clientWidth - 20) + 'px';
+            object.style.top = '-20px';
+            game2Container.appendChild(object);
+            game2FallingObjects.push(object);
+        }
+
+        function catchingGameLoop() {
+            for (var i = 0; i < game2FallingObjects.length; i++) {
+                var object = game2FallingObjects[i];
+                var objectY = parseInt(object.style.top);
+                objectY += 3; // Fall speed
+                object.style.top = objectY + 'px';
+
+                var playerRect = game2Player.getBoundingClientRect();
+                var objectRect = object.getBoundingClientRect();
+
+                // Collision detection
+                if (objectRect.bottom > playerRect.top &&
+                    objectRect.top < playerRect.bottom &&
+                    objectRect.left < playerRect.right &&
+                    objectRect.right > playerRect.left) {
+                    game2Container.removeChild(object);
+                    game2FallingObjects.splice(i, 1);
+                    i--;
+                    game2Score++;
+                    game2ScoreDisplay.textContent = "Score: " + game2Score;
+                } else if (objectY > game2Container.clientHeight) {
+                    game2Container.removeChild(object);
+                    game2FallingObjects.splice(i, 1);
+                    i--;
+                }
+            }
+            if (catchingGameRunning) {
+                catchingGameLoopInterval = setTimeout(catchingGameLoop, 30); // 30ms for 33 FPS
+            }
+        }
+
+        function startCatchingGame() {
+            stopAllGames();
+            gameMenu.style.display = 'none'; // Hide the game menu
+            currentActiveGame = 'catching_game';
+            document.getElementById('catching-game').style.display = 'flex';
+            gameTitle.textContent = "Simple Catching Game";
+
+            game2Score = 0;
+            game2ScoreDisplay.textContent = "Score: " + game2Score;
+            game2PlayerX = 125;
+            game2Player.style.left = game2PlayerX + 'px';
+
+            // Clear any old falling objects
+            while (game2Container.firstChild) {
+                game2Container.removeChild(game2Container.firstChild);
+            }
+            game2FallingObjects.length = 0;
+
+            catchingGameRunning = true;
+            createFallingObjectInterval = setInterval(game2CreateFallingObject, 1000); // Create object every 1 second
+            catchingGameLoop();
+        }
+
+        // Catching Game Event Listeners
+        window.addEventListener('keydown', function(e) {
+            if (currentActiveGame === 'catching_game') {
+                game2MovePlayer(e);
+            }
+        });
+
+        // Touch controls for Catching Game (using the same touch buttons)
+        hillClimbGasBtn.addEventListener('touchstart', function(e) {
+            if (currentActiveGame === 'catching_game') {
+                e.preventDefault();
+                // For catching game, ArrowLeft/Right are used for movement
+                // We'll map gasBtn to ArrowRight and brakeBtn to ArrowLeft for simplicity
+                game2MovePlayer({ key: 'ArrowRight' });
+            }
+        }, false);
+        hillClimbGasBtn.addEventListener('touchend', function(e) {
+            if (currentActiveGame === 'catching_game') {
+                e.preventDefault();
+                // No continuous movement, so just release
+            }
+        }, false);
+
+        hillClimbBrakeBtn.addEventListener('touchstart', function(e) {
+            if (currentActiveGame === 'catching_game') {
+                e.preventDefault();
+                game2MovePlayer({ key: 'ArrowLeft' });
+            }
+        }, false);
+        hillClimbBrakeBtn.addEventListener('touchend', function(e) {
+            if (currentActiveGame === 'catching_game') {
+                e.preventDefault();
+            }
+        }, false);
+
+
+        // --- Main Initialization ---
+        playHillClimbBtn.addEventListener('click', startHillClimbGame);
+        playCatchingGameBtn.addEventListener('click', startCatchingGame);
+
+        window.onload = function() {
+            // Initial setup for Hill Climb (even if not immediately displayed)
+            hillClimbSetupCanvasDimensions();
+            hillClimbSetupGameParameters();
+            car.x = 150 / PIXEL_SCALE_FACTOR;
+            car.y = offscreenCanvas.height * 0.7;
+            hillClimbGenerateInitialTerrain();
+
+            // Show the main menu first
+            showGameMenu();
+        };
+    </script>
+</body>
+</html>
